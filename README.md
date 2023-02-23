@@ -14,7 +14,24 @@
 
 <!-- TODO nf-core: Write a 1-2 sentence summary of what data the pipeline is for and what it does -->
 
-**nf-core/testpipeline** is a bioinformatics best-practice analysis pipeline for An example pipeline used to test new nf-core infrastructure and common code..
+**nf-core/testpipeline** is an example pipeline used to test new nf-core infrastructure and common code..
+
+
+### **HOW TO TEST NF-VALIDATION PLUGIN IN THIS BRANCH**
+
+1. Clone this pipeline repositiory and checkout to branch `nf-validation-plugin`.
+2. Follow the instrucctions in [nf-validation](https://github.com/nextflow-io/nf-validation) to clone and compile the plugin.
+3. Run the pipeline from the nf-validation folder with the following command:
+```bash
+./launch.sh run -plugins nf-validation ../testpipeline -profile test,docker --outdir ../testpipeline_output
+```
+
+> **Note**
+> The code shown in (`testpipeline.nf`)[https://github.com/nf-core/testpipeline/blob/nf-validation-plugin/workflows/testpipeline.nf#L92-L112) to modify channel structures is not included in the test pipeline.
+>
+> This is a POC to show how we can work on a resulting input channel. It mimics the functionality of nf-core/rnaseq.
+
+---
 
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses Docker/Singularity containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. Where possible, these processes have been submitted to and installed from [nf-core/modules](https://github.com/nf-core/modules) in order to make them available to all nf-core pipelines, and to everyone within the Nextflow community!
 

@@ -4,10 +4,11 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { validateParameters } from 'plugin/nf-validation'
-include { paramsHelp         } from 'plugin/nf-validation'
-include { paramsSummaryLog   } from 'plugin/nf-validation'
-include { paramsSummaryMap   } from 'plugin/nf-validation'
+include { validateParameters            } from 'plugin/nf-validation'
+include { paramsHelp                    } from 'plugin/nf-validation'
+include { paramsSummaryLog              } from 'plugin/nf-validation'
+include { paramsSummaryMap              } from 'plugin/nf-validation'
+include { validateAndConvertSamplesheet } from 'plugin/nf-validation'
 
 def logo = NfcoreTemplate.logo(workflow, params.monochrome_logs)
 def citation = '\n' + WorkflowMain.citation(workflow) + '\n'
@@ -32,9 +33,6 @@ WorkflowTestpipeline.initialise(params, log)
 // Check input path parameters to see if they exist
 def checkPathParamList = [ params.input, params.multiqc_config, params.fasta ]
 for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
-
-// Check mandatory parameters
-if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' }
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,18 +83,40 @@ workflow TESTPIPELINE {
     ch_versions = Channel.empty()
 
     //
-    // SUBWORKFLOW: Read in samplesheet, validate and stage input files
+    // Create file from input file
     //
-    INPUT_CHECK (
-        ch_input
+    ch_input = Channel.validateAndConvertSamplesheet(
+        file(params.input, checkIfExists:true),
+        file("${projectDir}/assets/schema_input.json", checkIfExists:true)
     )
-    ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
+
+    // This modification of channels is not mandatory
+    ch_input
+        .map {
+            // Add a single_end field in channel meta
+            meta, fastq_1, fastq_2 ->
+                if (fastq_2.isEmpty()) {
+                    [ meta + [single_end: true], [fastq_1] ]
+                } else {
+                    [ meta + [single_end: false], [fastq_1, fastq_2] ]
+                }
+        }
+        .groupTuple(by: [0])
+        .branch {
+            // Branch channel into samples specified only once (single) and re-sequenced samples which have to be merged (multiple)
+            meta, fastq ->
+                single  : fastq.size() == 1
+                    return [ meta, fastq.flatten() ]
+                multiple: fastq.size() > 1
+                    return [ meta, fastq.flatten() ]
+        }
+        .set { ch_fastq }
 
     //
     // MODULE: Run FastQC
     //
     FASTQC (
-        INPUT_CHECK.out.reads
+        ch_input
     )
     ch_versions = ch_versions.mix(FASTQC.out.versions.first())
 

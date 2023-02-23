@@ -4,9 +4,28 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
+include { validateParameters } from 'plugin/nf-validation'
+include { paramsHelp         } from 'plugin/nf-validation'
+include { paramsSummaryLog   } from 'plugin/nf-validation'
+include { paramsSummaryMap   } from 'plugin/nf-validation'
+
+def logo = NfcoreTemplate.logo(workflow, params.monochrome_logs)
+def citation = '\n' + WorkflowMain.citation(workflow) + '\n'
+def summary_params = paramsSummaryMap(workflow)
+
+// Print help message if needed
+if (params.help) {
+    def String command = "nextflow run ${workflow.manifest.name} --input samplesheet.csv --genome GRCh37 -profile docker"
+    log.info logo + paramsHelp(command) + citation += NfcoreTemplate.dashedLine(params.monochrome_logs)
+    System.exit(0)
+}
 
 // Validate input parameters
+validateParameters()
+
+// Print parameter summary log to screen
+log.info logo + paramsSummaryLog(workflow) + citation
+
 WorkflowTestpipeline.initialise(params, log)
 
 // TODO nf-core: Add all file path parameters for the pipeline to the list below

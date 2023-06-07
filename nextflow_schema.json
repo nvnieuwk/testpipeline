@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/testpipeline/master/nextflow_schema.json",
     "title": "nf-core/testpipeline pipeline parameters",
-    "description": "This is a test of nf-validation plugin",
+    "description": "test nf-validation plugin",
     "type": "object",
     "definitions": {
         "input_output_options": {

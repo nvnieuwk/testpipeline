@@ -2,6 +2,8 @@
 // This file holds several functions specific to the main.nf workflow in the nf-core/testpipeline pipeline
 //
 
+import nextflow.Nextflow
+
 class WorkflowMain {
 
     //
@@ -18,6 +20,7 @@ class WorkflowMain {
             "  https://github.com/${workflow.manifest.name}/blob/master/CITATIONS.md"
     }
 
+
     //
     // Validate parameters and print summary to screen
     //
@@ -28,6 +31,7 @@ class WorkflowMain {
             log.info "${workflow.manifest.name} ${workflow_version}"
             System.exit(0)
         }
+
 
         // Check that a -profile or Nextflow config has been provided to run the pipeline
         NfcoreTemplate.checkConfigProvided(workflow, log)
@@ -42,8 +46,7 @@ class WorkflowMain {
 
         // Check input has been provided
         if (!params.input) {
-            log.error "Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'"
-            System.exit(1)
+            Nextflow.error("Please provide an input samplesheet to the pipeline e.g. '--input samplesheet.csv'")
         }
     }
     //

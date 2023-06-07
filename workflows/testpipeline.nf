@@ -4,11 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { validateParameters            } from 'plugin/nf-validation'
-include { paramsHelp                    } from 'plugin/nf-validation'
-include { paramsSummaryLog              } from 'plugin/nf-validation'
-include { paramsSummaryMap              } from 'plugin/nf-validation'
-include { validateAndConvertSamplesheet } from 'plugin/nf-validation'
+include { validateParameters; paramsHelp; paramsSummaryLog; paramsSummaryMap } from 'plugin/nf-validation'
 
 def logo = NfcoreTemplate.logo(workflow, params.monochrome_logs)
 def citation = '\n' + WorkflowMain.citation(workflow) + '\n'
@@ -22,17 +18,14 @@ if (params.help) {
 }
 
 // Validate input parameters
-validateParameters()
+if (params.validate_params) {
+    validateParameters()
+}
 
 // Print parameter summary log to screen
 log.info logo + paramsSummaryLog(workflow) + citation
 
 WorkflowTestpipeline.initialise(params, log)
-
-// TODO nf-core: Add all file path parameters for the pipeline to the list below
-// Check input path parameters to see if they exist
-def checkPathParamList = [ params.input, params.multiqc_config, params.fasta ]
-for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,6 +47,7 @@ ch_multiqc_custom_methods_description = params.multiqc_methods_description ? fil
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
+include { INPUT_CHECK } from '../subworkflows/local/input_check'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,40 +76,21 @@ workflow TESTPIPELINE {
     ch_versions = Channel.empty()
 
     //
-    // Create file from input file
+    // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
-    ch_input = Channel.validateAndConvertSamplesheet(
-        file(params.input, checkIfExists:true),
-        file("${projectDir}/assets/schema_input.json", checkIfExists:true)
+    INPUT_CHECK (
+        file(params.input)
     )
-
-    // This modification of channels is not mandatory
-    ch_input
-        .map {
-            // Add a single_end field in channel meta
-            meta, fastq_1, fastq_2 ->
-                if (fastq_2.isEmpty()) {
-                    [ meta + [single_end: true], [fastq_1] ]
-                } else {
-                    [ meta + [single_end: false], [fastq_1, fastq_2] ]
-                }
-        }
-        .groupTuple(by: [0])
-        .branch {
-            // Branch channel into samples specified only once (single) and re-sequenced samples which have to be merged (multiple)
-            meta, fastq ->
-                single  : fastq.size() == 1
-                    return [ meta, fastq.flatten() ]
-                multiple: fastq.size() > 1
-                    return [ meta, fastq.flatten() ]
-        }
-        .set { ch_fastq }
+    ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
+    // TODO: OPTIONAL, you can use nf-validation plugin to create an input channel from the sample sheet with Channel.fromSamplesheet("input")
+    // See the documentation https://nextflow-io.github.io/nf-validation/samplesheets/fromSamplesheet/
+    // ! There is currently no tooling to help you write a sample sheet schema
 
     //
     // MODULE: Run FastQC
     //
     FASTQC (
-        ch_input
+        INPUT_CHECK.out.reads
     )
     ch_versions = ch_versions.mix(FASTQC.out.versions.first())
 

@@ -80,8 +80,8 @@ workflow PIPELINE_INITIALISATION {
     //
     // Create channel from input file provided through params.input
     //
-    Channel
-        .fromSamplesheet("input")
+    Channel.of(params.input)
+        .fromSamplesheet("assets/schema_input.json").view()
         .map {
             meta, fastq_1, fastq_2 ->
                 if (!fastq_2) {
